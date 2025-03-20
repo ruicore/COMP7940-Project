@@ -1,18 +1,16 @@
 import logging
-from typing import Dict, List
 
-from pybot.repository import RedisRepository
+from pybot.repository import FirebaseRepository
 from pybot.service.chatgpt import ChatGPTService
 from pybot.service.user import UserProfile
 
 
 class EventService:
-    def __init__(self, chatgpt_service: ChatGPTService, redis_repo: RedisRepository):
+    def __init__(self, chatgpt_service: ChatGPTService, repo: FirebaseRepository):
         self.chatgpt_service = chatgpt_service
-        self.redis_repo = redis_repo
+        self.repo = repo
 
-    def recommend_events(self, user_profile: UserProfile) -> List[Dict[str, str]]:
-        """Recommend fictional events and store them in Redis."""
+    def recommend_events(self, user_profile: UserProfile) -> list[dict[str, str]]:
         if not user_profile.interests:
             return []
 
@@ -33,12 +31,12 @@ class EventService:
             self._store_events(user_profile.username, events)
         return events
 
-    def recommend_more_events(self, user_profile: UserProfile) -> List[Dict[str, str]]:
+    def recommend_more_events(self, user_profile: UserProfile) -> list[dict[str, str]]:
         if not user_profile.interests:
             return []
 
         past_events_key = f'events:{user_profile.username}'
-        past_events = self.redis_repo.client.lrange(past_events_key, 0, -1) or []
+        past_events = self.repo.client.lrange(past_events_key, 0, -1) or []
         past_events_str = ', '.join([event for event in past_events]) if past_events else 'none'
 
         logging.error(f'Past events: {past_events_str}')
@@ -60,7 +58,7 @@ class EventService:
             self._store_events(user_profile.username, events)
         return events
 
-    def _parse_events(self, response: str) -> List[Dict[str, str]]:
+    def _parse_events(self, response: str) -> list[dict[str, str]]:
         if 'Error' in response:
             return []
 
@@ -72,12 +70,13 @@ class EventService:
                     if len(parts) == 3:
                         name, date, url = parts
                         events.append({'name': name[3:].strip(), 'date': date.strip(), 'link': url.strip()})
-        except Exception:
+        except Exception as e:
+            logging.error(f'Error parsing events: {e}')
             return []
 
         return events
 
-    def _store_events(self, username: str, events: List[Dict[str, str]]) -> None:
+    def _store_events(self, username: str, events: list[dict[str, str]]) -> None:
         key = f'events:{username}'
         for event in events:
-            self.redis_repo.client.rpush(key, event['name'])
+            self.repo.rpush(key, event['name'])

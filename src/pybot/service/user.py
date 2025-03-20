@@ -1,30 +1,43 @@
-from typing import Dict, List, Set
+import logging
 
 from pydantic import BaseModel
 
-from .chatgpt import ChatGPTService
+from pybot.repository import FirebaseRepository
+from pybot.service.chatgpt import ChatGPTService
 
 
 class UserProfile(BaseModel):
     username: str
-    interests: Set[str]
+    interests: set[str]
     description: str = ''
 
 
 class UserService:
-    def __init__(self, chatgpt_service: ChatGPTService):
+    def __init__(self, chatgpt_service: ChatGPTService, repo: FirebaseRepository):
         self.chatgpt_service = chatgpt_service
-        self.users: Dict[str, UserProfile] = {}
+        self.repo = repo
 
-    def register_user(self, username: str, interests: List[str], description: str = '') -> None:
-        self.users[username] = UserProfile(username=username, interests=set(interests), description=description.strip())
+    def register_user(self, username: str, interests: list[str], description: str = '') -> None:
+        user_data = UserProfile(
+            username=username,
+            interests=set(interests),
+            description=description.strip(),
+        ).model_dump()
+        self.repo.save_user(user_data)
 
-    def find_matches(self, username: str) -> List[str]:
-        if username not in self.users:
+    def get_user(self, username: str) -> UserProfile:
+        user_data = self.repo.get_user(username)
+        if user_data:
+            return UserProfile(**user_data)
+        return UserProfile(username=username, interests=set())
+
+    def find_matches(self, username: str) -> list[str]:
+        users_data = self.repo.get_user(username)
+        if username not in users_data:
             return []
 
-        current_user = self.users[username]
-        other_users = [u for u in self.users.values() if u.username != username]
+        current_user = UserProfile(**users_data[username])
+        other_users = [UserProfile(**data) for u, data in users_data.items() if u != username]
         if not other_users:
             return []
 
@@ -60,7 +73,8 @@ class UserService:
                     user_num = int(line.split(':')[0].split('User')[1].strip()) - 1
                     if 0 <= user_num < len(other_users):
                         matches.append(other_users[user_num].username)
-        except Exception:
+        except Exception as e:
+            logging.error(f'Error parsing matches: {e}')
             return []
 
         return matches
