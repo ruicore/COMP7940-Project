@@ -177,7 +177,7 @@ class TelegramCommandHandler:
             return
 
         response = ['Recommended Events:'] + [
-            f" {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+            f"{i:} {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
         update.message.reply_text('\n'.join(response))
 
@@ -185,7 +185,7 @@ class TelegramCommandHandler:
     @after_request('more_events')
     def more_events(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
-        user_profile = self.user_service.users.get(username)
+        user_profile = self.user_service.get_user(username)
 
         if not user_profile or not user_profile.interests:
             update.message.reply_text('Please register your interests first with /register')
@@ -197,7 +197,7 @@ class TelegramCommandHandler:
             return
 
         response = ['More Recommended Events:'] + [
-            f" {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+            f"{i:} {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
         update.message.reply_text('\n'.join(response))
 

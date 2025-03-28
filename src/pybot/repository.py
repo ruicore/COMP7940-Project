@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore import Increment
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from pybot.model import Event, UserProfile
 
@@ -53,7 +54,7 @@ class FirebaseRepository:
 
     def get_past_events(self, username: str, limit: int = 60) -> list[Event]:
         events = (
-            self.past_events.where('user', '==', username)
+            self.past_events.where(filter=FieldFilter('user', '==', username))
             .order_by('timestamp', direction='DESCENDING')
             .limit(limit)
             .stream()
@@ -82,16 +83,15 @@ class FirebaseRepository:
         one_minute_ago = now - timedelta(seconds=60)
 
         recent_logs = (
-            self.request_logs.where('user', '==', username)
-            .where('timestamp', '>=', one_minute_ago)
-            .order_by('timestamp', direction=firestore.Query.DESCENDING)
+            self.request_logs.where(filter=FieldFilter('user', '==', username))
+            .where(filter=FieldFilter('timestamp', '>=', one_minute_ago))
+            .order_by('timestamp', direction='DESCENDING')
             .limit(10)
             .stream()
         )
 
         if sum(1 for _ in recent_logs) >= 30:
             return False
-        # self.request_logs.add({'user': username, 'timestamp': now, 'cmd': cmd,})
 
         return True
 
