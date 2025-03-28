@@ -1,13 +1,19 @@
 import os
 import tempfile
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore import Increment
+
+from pybot.model import Event, UserProfile
 
 
+@dataclass
 class FirebaseRepository:
-    def __init__(self):
+
+    def __post_init__(self):
         cred_json = os.environ.get('GOOGLE_CREDENTIALS')
         if not cred_json:
             raise RuntimeError('Missing GOOGLE_CREDENTIALS env var')
@@ -22,25 +28,44 @@ class FirebaseRepository:
         self.users = self.db.collection('users')
         self.rate_limits = self.db.collection('rate_limits')
         self.request_logs = self.db.collection('request_logs')
+        self.past_events = self.db.collection('past_events')
 
-    def save_user(self, user: dict) -> None:
-        name = user['name']
-        self.users.document(name).set(user)
+    def save_user(self, user: UserProfile) -> None:
+        self.users.document(user.username).set(user.model_dump())
 
-    def get_user(self, name: str) -> dict | None:
+    def get_user(self, name: str) -> UserProfile | None:
         doc = self.users.document(name).get()
-        return doc.to_dict() if doc.exists else None
+        return UserProfile(**doc.to_dict()) if doc.exists else None
+
+    def save_events(self, username: str, events: list[Event]) -> None:
+        batch = self.db.batch()
+        for event in events:
+            doc_ref = self.past_events.document()
+            batch.set(
+                doc_ref,
+                {
+                    'user': username,
+                    'content': event.model_dump_json(),
+                    'timestamp': datetime.now(UTC),
+                },
+            )
+        batch.commit()
+
+    def get_past_events(self, username: str, limit: int = 60) -> list[Event]:
+        events = (
+            self.past_events.where('user', '==', username)
+            .order_by('timestamp', direction='DESCENDING')
+            .limit(limit)
+            .stream()
+        )
+        return [Event(**doc.to_dict()['content']) for doc in events] if events else []
 
     def incr(self, key: str) -> int:
-        doc = self.rate_limits.document(key).get()
-        if doc.exists:
-            data = doc.to_dict()
-            count = data.get('count', 0) + 1
-        else:
-            count = 1
+        ref = self.rate_limits.document(key)
+        ref.set({'timestamp': datetime.now(UTC)}, merge=True)
+        ref.update({'count': Increment(1)})
 
-        self.rate_limits.document(key).set({'count': count, 'timestamp': datetime.now(UTC)})
-        return count
+        return ref.get().to_dict().get('count', 0)
 
     def rpush(self, key: str, value: str) -> None:
         self.request_logs.document(key).set(
@@ -52,12 +77,30 @@ class FirebaseRepository:
             merge=True,
         )
 
-    def lrange(self, key: str, start: int, end: int) -> list[str]:
-        logs = (
-            self.request_logs.where('user', '==', key)
+    def check_rate_limit(self, username: str, cmd: str) -> bool:
+        now = datetime.now(UTC)
+        one_minute_ago = now - timedelta(seconds=60)
+
+        recent_logs = (
+            self.request_logs.where('user', '==', username)
+            .where('timestamp', '>=', one_minute_ago)
             .order_by('timestamp', direction=firestore.Query.DESCENDING)
-            .offset(start)
-            .limit(end - start + 1)
+            .limit(10)
             .stream()
         )
-        return [doc.to_dict()['content'] for doc in logs]
+
+        if sum(1 for _ in recent_logs) >= 30:
+            return False
+        # self.request_logs.add({'user': username, 'timestamp': now, 'cmd': cmd,})
+
+        return True
+
+    def log_request(self, username: str, command: str, success: bool) -> None:
+        self.request_logs.add(
+            {
+                'timestamp': datetime.now(UTC),
+                'username': username,
+                'command': command,
+                'success': success,
+            }
+        )

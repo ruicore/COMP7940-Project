@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from time import time
 from typing import Any, Callable
@@ -25,7 +26,8 @@ def before_request(
     @wraps(handler)
     def wrapper(self: 'TelegramCommandHandler', update: Update, context: CallbackContext[Any, Any, Any]) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
-        if not self._check_rate_limit(username):
+        cmd = update.message.text.split()[0][1:]  # Get the command name without the leading '/'
+        if not self._check_rate_limit(username, cmd):
             update.message.reply_text('Rate limit exceeded. Try again in a minute.')
             return
         handler(self, update, context)
@@ -84,31 +86,11 @@ class TelegramCommandHandler:
         self.event_service = event_service
         self.logger = logging.getLogger(__name__)
 
-    def _check_rate_limit(self, username: str) -> bool:
-        # key = f'rate:{username}'
-        # requests = self.repo.ref.child('rate_limits').child(key).get() or []
-        # now = int(time())
-        # minute_ago = now - 60
-        #
-        # recent = [r for r in requests if isinstance(r, int) and r > minute_ago]
-        # if len(recent) >= 10:
-        #     return False
-        #
-        # self.repo.rpush(key, str(now))
-        return True
+    def _check_rate_limit(self, username: str, cmd: str) -> bool:
+        return self.repo.check_rate_limit(username, cmd)
 
     def _log_request(self, username: str, command: str, success: bool) -> None:
-        self.repo.rpush(
-            'logs',
-            json.dumps(
-                {
-                    'timestamp': int(time()),
-                    'username': username,
-                    'command': command,
-                    'success': success,
-                }
-            ),
-        )
+        self.repo.log_request(username, command, success)
 
     @before_request
     @after_request('help')
@@ -194,10 +176,10 @@ class TelegramCommandHandler:
             update.message.reply_text("Sorry, I couldn't generate event recommendations right now.")
             return
 
-        response = 'Recommended Events:\n'
-        for event in events:
-            response += f"- {event['name']} on {event['date']} ({event['link']})\n"
-        update.message.reply_text(response)
+        response = ['Recommended Events:'] + [
+            f" {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+        ]
+        update.message.reply_text('\n'.join(response))
 
     @before_request
     @after_request('more_events')
@@ -214,10 +196,10 @@ class TelegramCommandHandler:
             update.message.reply_text("Sorry, I couldn't generate more event recommendations right now.")
             return
 
-        response = 'More Recommended Events:\n'
-        for event in events:
-            response += f"- {event['name']} on {event['date']} ({event['link']})\n"
-        update.message.reply_text(response)
+        response = ['More Recommended Events:'] + [
+            f" {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+        ]
+        update.message.reply_text('\n'.join(response))
 
     @before_request
     @after_request('message')

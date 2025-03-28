@@ -1,15 +1,8 @@
 import logging
 
-from pydantic import BaseModel
-
+from pybot.model import UserProfile
 from pybot.repository import FirebaseRepository
 from pybot.service.chatgpt import ChatGPTService
-
-
-class UserProfile(BaseModel):
-    username: str
-    interests: set[str]
-    description: str = ''
 
 
 class UserService:
@@ -18,18 +11,18 @@ class UserService:
         self.repo = repo
 
     def register_user(self, username: str, interests: list[str], description: str = '') -> None:
-        user_data = UserProfile(
-            username=username,
-            interests=set(interests),
-            description=description.strip(),
-        ).model_dump()
-        self.repo.save_user(user_data)
+        self.repo.save_user(
+            UserProfile(
+                username=username,
+                interests=set(interests),
+                description=description.strip(),
+            )
+        )
 
     def get_user(self, username: str) -> UserProfile:
+
         user_data = self.repo.get_user(username)
-        if user_data:
-            return UserProfile(**user_data)
-        return UserProfile(username=username, interests=set())
+        return user_data if user_data else UserProfile(username=username, interests=set())
 
     def find_matches(self, username: str) -> list[str]:
         users_data = self.repo.get_user(username)
