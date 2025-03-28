@@ -1,30 +1,9 @@
 import os
 import tempfile
+from datetime import UTC, datetime
 
 import firebase_admin
-import redis
 from firebase_admin import credentials, firestore
-from setting import RedisConfig, config
-
-repo = redis.Redis(**dict(config.redis))
-
-
-class RedisRepository:
-    def __init__(self, redis_config: RedisConfig):
-        self.client = redis.Redis(**redis_config.model_dump())
-
-    def incr(self, key: str) -> int:
-        return int(self.client.incr(key))
-
-    def get(self, key: str) -> str | None:
-        value = self.client.get(key)
-        return value if value else None
-
-    def rpush(self, key: str, value: str) -> None:
-        self.client.rpush(key, value)
-
-    def lrange(self, key: str, start: int, end: int) -> list[bytes]:
-        return self.client.lrange(key, start, end)
 
 
 class FirebaseRepository:
@@ -40,40 +19,45 @@ class FirebaseRepository:
         firebase_admin.initialize_app(credentials.Certificate(cred_path))
 
         self.db = firestore.client()
-        self.collection = self.db.collection('users')
-        self.counters = self.db.collection('counters')
-        self.lists = self.db.collection('lists')
+        self.users = self.db.collection('users')
+        self.rate_limits = self.db.collection('rate_limits')
+        self.request_logs = self.db.collection('request_logs')
 
     def save_user(self, user: dict) -> None:
         name = user['name']
-        self.collection.document(name).set(user)
+        self.users.document(name).set(user)
 
     def get_user(self, name: str) -> dict | None:
-        doc = self.collection.document(name).get()
+        doc = self.users.document(name).get()
         return doc.to_dict() if doc.exists else None
 
     def incr(self, key: str) -> int:
-        counter_ref = self.counters.document(key)
+        doc = self.rate_limits.document(key).get()
+        if doc.exists:
+            data = doc.to_dict()
+            count = data.get('count', 0) + 1
+        else:
+            count = 1
 
-        @firestore.transactional
-        def update_counter(transaction):
-            snapshot = counter_ref.get(transaction=transaction)
-            current = snapshot.get('value') if snapshot.exists else 0
-            new_value = current + 1
-            transaction.set(counter_ref, {'value': new_value}, merge=True)
-            return new_value
-
-        transaction = self.db.transaction()
-        return update_counter(transaction)
+        self.rate_limits.document(key).set({'count': count, 'timestamp': datetime.now(UTC)})
+        return count
 
     def rpush(self, key: str, value: str) -> None:
-        list_ref = self.lists.document(key).collection('items')
-        list_ref.add({'value': value, 'timestamp': firestore.SERVER_TIMESTAMP})
+        self.request_logs.document(key).set(
+            {
+                'user': key,
+                'content': value,
+                'timestamp': datetime.now(UTC),
+            },
+            merge=True,
+        )
 
     def lrange(self, key: str, start: int, end: int) -> list[str]:
-        list_ref = self.lists.document(key).collection('items')
-        query = list_ref.order_by('timestamp').limit(end + 1)
-        docs = query.get()
-
-        values = [doc.to_dict()['value'] for doc in docs]
-        return values[start : end + 1] if values else []
+        logs = (
+            self.request_logs.where('user', '==', key)
+            .order_by('timestamp', direction=firestore.Query.DESCENDING)
+            .offset(start)
+            .limit(end - start + 1)
+            .stream()
+        )
+        return [doc.to_dict()['content'] for doc in logs]

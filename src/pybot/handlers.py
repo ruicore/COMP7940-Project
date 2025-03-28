@@ -85,17 +85,16 @@ class TelegramCommandHandler:
         self.logger = logging.getLogger(__name__)
 
     def _check_rate_limit(self, username: str) -> bool:
-        """Check and enforce rate limit: 10 requests per minute."""
-        key = f'rate:{username}'
-        requests = self.repo.ref.child('rate_limits').child(key).get() or []
-        now = int(time())
-        minute_ago = now - 60
-
-        recent = [r for r in requests if isinstance(r, int) and r > minute_ago]
-        if len(recent) >= 10:
-            return False
-
-        self.repo.rpush(key, str(now))
+        # key = f'rate:{username}'
+        # requests = self.repo.ref.child('rate_limits').child(key).get() or []
+        # now = int(time())
+        # minute_ago = now - 60
+        #
+        # recent = [r for r in requests if isinstance(r, int) and r > minute_ago]
+        # if len(recent) >= 10:
+        #     return False
+        #
+        # self.repo.rpush(key, str(now))
         return True
 
     def _log_request(self, username: str, command: str, success: bool) -> None:

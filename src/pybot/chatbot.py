@@ -28,7 +28,7 @@ class TelegramBot:
         self.updater = Updater(token=config.telegram.access_token, use_context=True)
         self.dispatcher = self.updater.dispatcher
 
-    def setup_handlers(self) -> 'TelegramBot':
+    def setup_handlers(self) -> Self:
         self.dispatcher.add_handler(CommandHandler('help', self.command_handler.help))
         self.dispatcher.add_handler(CommandHandler('hello', self.command_handler.hello))
         self.dispatcher.add_handler(CommandHandler('add', self.command_handler.add))
@@ -52,12 +52,3 @@ class TelegramBot:
         self.updater.idle()
 
         return self
-
-
-def main():
-    bot = TelegramBot()
-    bot.run()
-
-
-if __name__ == '__main__':
-    main()

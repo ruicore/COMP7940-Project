@@ -9,4 +9,4 @@ COPY src/pybot .
 
 ENV PYTHONPATH=/app
 
-CMD ["python", "chatbot.py"]
+CMD ["python", "main.py"]
