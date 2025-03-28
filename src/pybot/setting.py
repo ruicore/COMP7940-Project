@@ -41,7 +41,7 @@ class AppConfig(BaseModel):
         parser.read(file)
         data = {s.lower(): dict(parser.items(s)) for s in parser.sections()}
 
-        for key in ['TELEGRAM_ACCESS_TOKEN', 'CHATGPT_ACCESS_TOKEN', 'REDIS_PASSWORD']:
+        for key in ['TELEGRAM_ACCESS_TOKEN', 'CHATGPT_ACCESS_TOKEN', 'REDIS_PASSWORD', 'PORT']:
             pre, post = key.lower().split('_', 1)
             data.setdefault(pre, {})[post] = os.environ.get(key, data.get(pre, {}).get(post))  # type: ignore
 
