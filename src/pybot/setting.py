@@ -33,7 +33,7 @@ class AppConfig(BaseModel):
     chatgpt: ChatGPTConfig
     redis: RedisConfig
     app_url: str
-    app_port: Annotated[int, Field(alias='port')]
+    app_port: int = Field(default_factory=lambda: int(os.environ.get('PORT', 5000)))
 
     @classmethod
     def from_ini(cls, file: str = '.ini') -> 'AppConfig':
@@ -41,7 +41,7 @@ class AppConfig(BaseModel):
         parser.read(file)
         data = {s.lower(): dict(parser.items(s)) for s in parser.sections()}
 
-        for key in ['TELEGRAM_ACCESS_TOKEN', 'CHATGPT_ACCESS_TOKEN', 'REDIS_PASSWORD', 'PORT']:
+        for key in ['TELEGRAM_ACCESS_TOKEN', 'CHATGPT_ACCESS_TOKEN', 'REDIS_PASSWORD']:
             pre, post = key.lower().split('_', 1)
             data.setdefault(pre, {})[post] = os.environ.get(key, data.get(pre, {}).get(post))  # type: ignore
 
