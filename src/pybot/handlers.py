@@ -177,7 +177,7 @@ class TelegramCommandHandler:
             return
 
         response = ['Recommended Events:'] + [
-            f"{i:} {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+            f"{i}. {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
         update.message.reply_text('\n'.join(response))
 
@@ -197,7 +197,7 @@ class TelegramCommandHandler:
             return
 
         response = ['More Recommended Events:'] + [
-            f"{i:} {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
+            f"{i}. {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
         update.message.reply_text('\n'.join(response))
 
