@@ -1,10 +1,12 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /app/pybot
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src .
+COPY src/pybot .
 
-CMD ["python", "pybot/chatbot.py"]
+ENV PYTHONPATH=/app
+
+CMD ["python", "chatbot.py"]

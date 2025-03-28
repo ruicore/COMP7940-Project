@@ -2,7 +2,7 @@ import firebase_admin
 import redis
 from firebase_admin import credentials, firestore
 
-from pybot.setting import RedisConfig, config
+from setting import RedisConfig, config
 
 repo = redis.Redis(**dict(config.redis))
 
