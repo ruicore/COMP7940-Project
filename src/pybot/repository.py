@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 from dataclasses import dataclass
@@ -59,7 +60,7 @@ class FirebaseRepository:
             .limit(limit)
             .stream()
         )
-        return [Event(**doc.to_dict()['content']) for doc in events] if events else []
+        return [Event(**json.loads(doc.to_dict()['content'])) for doc in events] if events else []
 
     def incr(self, key: str) -> int:
         ref = self.rate_limits.document(key)
