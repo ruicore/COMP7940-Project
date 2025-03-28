@@ -1,5 +1,9 @@
 import configparser
 import os
+from typing import Annotated
+
+from pydantic import Field
+
 
 from pydantic import BaseModel
 
@@ -28,6 +32,8 @@ class AppConfig(BaseModel):
     telegram: TelegramConfig
     chatgpt: ChatGPTConfig
     redis: RedisConfig
+    app_url: str
+    app_port: Annotated[int, Field(alias='port')]
 
     @classmethod
     def from_ini(cls, file: str = '.ini') -> 'AppConfig':
