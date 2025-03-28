@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import firebase_admin
 import redis
 from firebase_admin import credentials, firestore
@@ -26,7 +29,15 @@ class RedisRepository:
 
 class FirebaseRepository:
     def __init__(self):
-        firebase_admin.initialize_app(credentials.Certificate('secret/serviceAccountKey.json'))
+        cred_json = os.environ.get('GOOGLE_CREDENTIALS')
+        if not cred_json:
+            raise RuntimeError('Missing GOOGLE_CREDENTIALS env var')
+
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp:
+            tmp.write(cred_json)
+            cred_path = tmp.name
+
+        firebase_admin.initialize_app(credentials.Certificate(cred_path))
 
         self.db = firestore.client()
         self.collection = self.db.collection('users')
