@@ -1,11 +1,8 @@
 import configparser
 import os
-from typing import Annotated
 
-from pydantic import Field
-
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 
 class TelegramConfig(BaseModel):
@@ -28,12 +25,12 @@ class RedisConfig(BaseModel):
     decode_responses: bool = True
 
 
-class AppConfig(BaseModel):
+class AppConfig(BaseSettings):
     telegram: TelegramConfig
     chatgpt: ChatGPTConfig
     redis: RedisConfig
     app_url: str
-    app_port: int = Field(default_factory=lambda: int(os.environ.get('PORT', 5000)))
+    app_port: int = Field(alias='PORT')
 
     @classmethod
     def from_ini(cls, file: str = '.ini') -> 'AppConfig':

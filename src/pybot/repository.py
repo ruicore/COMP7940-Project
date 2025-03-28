@@ -1,7 +1,6 @@
 import firebase_admin
 import redis
 from firebase_admin import credentials, firestore
-
 from setting import RedisConfig, config
 
 repo = redis.Redis(**dict(config.redis))

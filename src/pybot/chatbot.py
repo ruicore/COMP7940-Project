@@ -7,7 +7,7 @@ from service.chatgpt import ChatGPTService
 from service.event import EventService
 from service.user import UserService
 from setting import config
-from telegram.ext import CommandHandler, Dispatcher, Filters, MessageHandler, Updater
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -44,10 +44,10 @@ class TelegramBot:
         self.setup_handlers()
 
         self.updater.start_webhook(
-            listen="0.0.0.0",
+            listen='0.0.0.0',
             port=config.app_port,
             url_path=config.telegram.access_token,
-            webhook_url=f"{config.app_url}/{config.telegram.access_token}"
+            webhook_url=f"{config.app_url}/{config.telegram.access_token}",
         )
         self.updater.idle()
 
