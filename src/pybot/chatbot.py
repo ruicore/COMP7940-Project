@@ -36,7 +36,8 @@ class TelegramBot:
         self.app.add_handler(CommandHandler('add', self.command_handler.add))
         self.app.add_handler(CommandHandler('register', self.command_handler.register))
         self.app.add_handler(CommandHandler('events', self.command_handler.events))
-        self.app.add_handler(CommandHandler('more_events', self.command_handler.more_events))
+        self.app.add_handler(CommandHandler('openai', self.command_handler.openai))
+        # self.app.add_handler(CommandHandler('more_events', self.command_handler.more_events))
         self.app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.command_handler.handle_message))
 
     async def set_bot_commands(self, app) -> Self:

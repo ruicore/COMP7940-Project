@@ -119,6 +119,19 @@ class TelegramCommandHandler:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Good day, {reply_message}!')
 
     @before_request
+    @after_request('openai')
+    async def openai(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not context.args:
+            await update.message.reply_text('Usage: /openai <message>')
+            return
+
+        message = ' '.join(context.args)
+        self.logger.info(f'OpenAI message: {message}')
+        reply = self.chatgpt_service.submit(message)
+        self.logger.info(f'OpenAI response: {reply}')
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
+
+    @before_request
     @after_request('add')
     async def add(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
@@ -216,6 +229,12 @@ class TelegramCommandHandler:
     @before_request
     @after_request('message')
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        reply = self.chatgpt_service.submit(update.message.text)
+        message = update.message
+        if message.chat.type in ['group', 'supergroup']:
+            bot_username = context.bot.username
+            if f"@{bot_username}" not in message.text:
+                return
+
+        reply = self.chatgpt_service.submit(message.text)
         self.logger.info(f'ChatGPT response: {reply}')
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
+        await context.bot.send_message(chat_id=message.chat.id, text=reply)
