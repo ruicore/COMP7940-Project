@@ -41,12 +41,11 @@ class TelegramBot:
 
     async def set_bot_commands(self, app) -> Self:
         commands = [
-            BotCommand('help', '查看帮助'),
-            BotCommand('hello', '向 Bot 打招呼'),
-            BotCommand('register', '注册你自己'),
-            BotCommand('add', '添加推荐内容'),
-            BotCommand('events', '查看推荐的事情'),
-            BotCommand('more_events', '查看更多推荐'),
+            BotCommand('help', 'Show help information'),
+            BotCommand('hello', 'Say hello'),
+            BotCommand('register', 'Register your account'),
+            BotCommand('events', 'Recommend events'),
+            # BotCommand('more_events', '查看更多推荐'),
         ]
         await app.bot.set_my_commands(commands)
         return self
