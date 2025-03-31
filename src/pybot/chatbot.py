@@ -46,6 +46,7 @@ class TelegramBot:
             BotCommand('hello', 'Say hello'),
             BotCommand('register', 'Register your account'),
             BotCommand('events', 'Recommend events'),
+            BotCommand('openai', 'Chat with OpenAI'),
             # BotCommand('more_events', '查看更多推荐'),
         ]
         await app.bot.set_my_commands(commands)
