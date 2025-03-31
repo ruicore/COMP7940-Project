@@ -57,5 +57,6 @@ class TelegramBot:
         self.app.run_webhook(
             listen='0.0.0.0',
             port=self.config.app_port,
+            url_path=self.config.telegram.access_token,
             webhook_url=f"{self.config.app_url}/{self.config.telegram.access_token}",
         )
