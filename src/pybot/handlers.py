@@ -198,7 +198,9 @@ class TelegramCommandHandler:
     @before_request
     @after_request(Command.REGISTER)
     async def register(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        username = update.message.from_user.username or str(update.message.from_user.id)
+        user = update.effective_user
+        username = user.username or str(user.id)
+
         if not context.args:
             await update.message.reply_text(
                 "Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")"
@@ -239,7 +241,9 @@ class TelegramCommandHandler:
     @before_request
     @after_request(Command.EVENTS)
     async def events(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        username = update.message.from_user.username or str(update.message.from_user.id)
+        user = update.effective_user
+        username = user.username or str(user.id)
+
         user_profile = self.user_service.get_user(username)
 
         if not user_profile or not user_profile.interests:
@@ -259,7 +263,9 @@ class TelegramCommandHandler:
     @before_request
     @after_request('more_events')
     async def more_events(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        username = update.message.from_user.username or str(update.message.from_user.id)
+        user = update.effective_user
+        username = user.username or str(user.id)
+
         user_profile = self.user_service.get_user(username)
 
         if not user_profile or not user_profile.interests:
