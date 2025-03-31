@@ -258,7 +258,7 @@ class TelegramCommandHandler:
         response = ['Recommended Events:'] + [
             f"{i}. {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
-        await update.message.reply_text('\n'.join(response))
+        await context.bot.send_message(chat_id=update.effective_chat.id, text='\n'.join(response))
 
     @before_request
     @after_request('more_events')
