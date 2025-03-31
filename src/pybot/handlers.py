@@ -95,7 +95,7 @@ class TelegramCommandHandler:
         if data == 'cmd_register':
             await context.bot.send_message(
                 chat_id=query.message.chat.id,
-                text="Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")"
+                text="Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")",
             )
         elif data == 'cmd_events':
             await self.events(update, context)
@@ -104,7 +104,11 @@ class TelegramCommandHandler:
         elif data == 'cmd_openai':
             await context.bot.send_message(chat_id=query.message.chat.id, text='Usage: /openai <message>')
         elif data == 'cmd_help':
-            await self.help(update, context)
+            await context.bot.send_message(
+                chat_id=query.message.chat.id,
+                text='Commands: /help, /hello, /add, /register, /events, /more_events\n'
+                'Example: /register gaming vr "I enjoy fast-paced shooter games"',
+            )
         else:
             await context.bot.send_message(chat_id=query.message.chat.id, text='⚠️ Unknown command. Please try again.')
 
