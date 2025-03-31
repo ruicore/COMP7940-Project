@@ -1,5 +1,7 @@
 from typing import Self
 
+import pytz
+
 from handlers import TelegramCommandHandler
 from repository import FirebaseRepository
 from service.chatgpt import ChatGPTService
@@ -28,7 +30,7 @@ class TelegramBot:
             self.user_service,
             self.event_service,
         )
-        self.app = ApplicationBuilder().token(config.telegram.access_token).build()
+        self.app = ApplicationBuilder().token(config.telegram.access_token).timezone(pytz.UTC).build()
 
     def setup_handlers(self):
         self.app.add_handler(CommandHandler('start', self.command_handler.start))
