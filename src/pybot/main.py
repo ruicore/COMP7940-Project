@@ -1,14 +1,14 @@
 import logging
-
+import asyncio
 from pybot.chatbot import TelegramBot
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 
-def main():
+async def main():
     bot = TelegramBot()
-    bot.run()
+    await bot.run()
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
