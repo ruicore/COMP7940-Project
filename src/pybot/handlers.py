@@ -23,7 +23,8 @@ def before_request(
 
     @wraps(handler)
     async def wrapper(self: 'TelegramCommandHandler', update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        username = update.message.from_user.username or str(update.message.from_user.id)
+        user = update.effective_user
+        username = user.username or str(user.id)
         cmd = update.message.text.split()[0][1:]  # Get the command name without the leading '/'
         if not self._check_rate_limit(username, cmd):
             await update.message.reply_text('Rate limit exceeded. Try again in a minute.')
@@ -54,7 +55,8 @@ def after_request(
             *args,
             **kwargs,
         ) -> None:
-            username = update.message.from_user.username or str(update.message.from_user.id)
+            user = update.effective_user
+            username = user.username or str(user.id)
             try:
                 await handler(self, update, context)
                 self._log_request(username, command_name, True)
