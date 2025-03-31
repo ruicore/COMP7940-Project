@@ -7,8 +7,8 @@ from service.chatgpt import ChatGPTService
 from service.event import EventService
 from service.user import UserService
 from setting import config
-from telegram import BotCommand, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, JobQueue, MessageHandler, filters
+from telegram import BotCommand
+from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, JobQueue, MessageHandler, filters
 
 
 class TelegramBot:
@@ -37,17 +37,12 @@ class TelegramBot:
         self.app.add_handler(CommandHandler('register', self.command_handler.register))
         self.app.add_handler(CommandHandler('events', self.command_handler.events))
         self.app.add_handler(CommandHandler('openai', self.command_handler.openai))
-        # self.app.add_handler(CommandHandler('more_events', self.command_handler.more_events))
         self.app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.command_handler.handle_message))
+        self.app.add_handler(CallbackQueryHandler(self.command_handler.handle_callback))
 
     async def set_bot_commands(self, app) -> Self:
         commands = [
-            BotCommand('help', 'Show help information'),
-            BotCommand('hello', 'Say hello'),
-            BotCommand('register', 'Register your account'),
-            BotCommand('events', 'Recommend events'),
-            BotCommand('openai', 'Chat with OpenAI'),
-            # BotCommand('more_events', '查看更多推荐'),
+            BotCommand('start', 'Start the bot'),
         ]
         await app.bot.set_my_commands(commands)
         return self

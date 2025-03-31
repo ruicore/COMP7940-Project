@@ -87,6 +87,27 @@ class TelegramCommandHandler:
     def _log_request(self, username: str, command: str, success: bool) -> None:
         self.repo.log_request(username, command, success)
 
+    async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        data = query.data
+        await query.answer()
+
+        if data == 'cmd_register':
+            await context.bot.send_message(
+                chat_id=query.message.chat.id,
+                text="Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")"
+            )
+        elif data == 'cmd_events':
+            await self.events(update, context)
+        elif data == 'cmd_add':
+            await context.bot.send_message(chat_id=query.message.chat.id, text='Usage: /add <keyword>')
+        elif data == 'cmd_openai':
+            await context.bot.send_message(chat_id=query.message.chat.id, text='Usage: /openai <message>')
+        elif data == 'cmd_help':
+            await self.help(update, context)
+        else:
+            await context.bot.send_message(chat_id=query.message.chat.id, text='⚠️ Unknown command. Please try again.')
+
     @staticmethod
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
