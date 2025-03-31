@@ -20,15 +20,27 @@ def before_request(
         Any,
     ],
 ) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Any]:
-
     @wraps(handler)
     async def wrapper(self: 'TelegramCommandHandler', update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         username = user.username or str(user.id)
-        cmd = update.message.text.split()[0][1:]  # Get the command name without the leading '/'
-        if not self._check_rate_limit(username, cmd):
-            await update.message.reply_text('Rate limit exceeded. Try again in a minute.')
+
+        cmd = None
+        if update.message and update.message.text:
+            cmd = update.message.text.split()[0][1:]
+        elif update.callback_query:
+            cmd = update.callback_query.data
+
+        if cmd and not self._check_rate_limit(username, cmd):
+            if update.message:
+                await update.message.reply_text('Rate limit exceeded. Try again in a minute.')
+            elif update.callback_query:
+                await context.bot.send_message(
+                    chat_id=update.callback_query.message.chat.id,
+                    text='Rate limit exceeded. Try again in a minute.',
+                )
             return
+
         await handler(self, update, context)
 
     return wrapper
