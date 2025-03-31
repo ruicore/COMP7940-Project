@@ -1,7 +1,6 @@
 from typing import Self
 
 import pytz
-
 from handlers import TelegramCommandHandler
 from repository import FirebaseRepository
 from service.chatgpt import ChatGPTService
@@ -9,12 +8,7 @@ from service.event import EventService
 from service.user import UserService
 from setting import config
 from telegram import BotCommand
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, JobQueue, MessageHandler, filters
 
 
 class TelegramBot:
@@ -30,7 +24,10 @@ class TelegramBot:
             self.user_service,
             self.event_service,
         )
-        self.app = ApplicationBuilder().token(config.telegram.access_token).timezone(pytz.UTC).build()
+        job_queue = JobQueue()
+        job_queue.scheduler.configure(timezone=pytz.UTC)
+
+        self.app = ApplicationBuilder().token(config.telegram.access_token).job_queue(job_queue).build()
 
     def setup_handlers(self):
         self.app.add_handler(CommandHandler('start', self.command_handler.start))
@@ -54,7 +51,7 @@ class TelegramBot:
         await app.bot.set_my_commands(commands)
         return self
 
-    async def run(self):
+    def run(self):
         self.setup_handlers()
         self.app.post_init = self.set_bot_commands
         self.app.run_webhook(
