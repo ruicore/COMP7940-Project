@@ -3,8 +3,8 @@ from functools import wraps
 from typing import Any, Callable
 
 from service import ChatGPTService, EventService, UserService
-from telegram import Update
-from telegram.ext import CallbackContext
+from telegram import ReplyKeyboardMarkup, Update
+from telegram.ext import ContextTypes
 
 from pybot.repository import FirebaseRepository
 
@@ -14,59 +14,57 @@ def before_request(
         [
             'TelegramCommandHandler',
             Update,
-            CallbackContext[Any, Any, Any],
+            ContextTypes.DEFAULT_TYPE,
         ],
         Any,
     ],
-) -> Callable[[Update, CallbackContext[Any, Any, Any]], Any]:
+) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Any]:
 
     @wraps(handler)
-    def wrapper(self: 'TelegramCommandHandler', update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def wrapper(self: 'TelegramCommandHandler', update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         cmd = update.message.text.split()[0][1:]  # Get the command name without the leading '/'
         if not self._check_rate_limit(username, cmd):
-            update.message.reply_text('Rate limit exceeded. Try again in a minute.')
+            await update.message.reply_text('Rate limit exceeded. Try again in a minute.')
             return
-        handler(self, update, context)
+        await handler(self, update, context)
 
-    return wrapper  # noqa
+    return wrapper
 
 
 def after_request(
     command_name: str,
-) -> Callable[[Callable[[Update, CallbackContext[Any, Any, Any]], Any]], Any]:
-    """Decorator to handle post-request logging."""
-
+) -> Callable[[Callable[[Update, ContextTypes.DEFAULT_TYPE], Any]], Any]:
     def decorator(
         handler: Callable[
             [
                 'TelegramCommandHandler',
                 Update,
-                CallbackContext[Any, Any, Any],
+                ContextTypes.DEFAULT_TYPE,
             ],
             Any,
         ]
-    ) -> Callable[[Update, CallbackContext[Any, Any, Any]], Any]:
+    ) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Any]:
         @wraps(handler)
-        def wrapper(
+        async def wrapper(
             self: 'TelegramCommandHandler',
             update: Update,
-            context: CallbackContext[Any, Any, Any],
+            context: ContextTypes.DEFAULT_TYPE,
             *args,
             **kwargs,
         ) -> None:
             username = update.message.from_user.username or str(update.message.from_user.id)
             try:
-                handler(self, update, context)  # Call the original handler
-                self._log_request(username, command_name, True)  # Log success
+                await handler(self, update, context)
+                self._log_request(username, command_name, True)
             except Exception as e:
                 self.logger.error(f'Error in {command_name}: {e}')
-                self._log_request(username, command_name, False)  # Log failure
-                raise  # Re-raise the exception if needed
+                self._log_request(username, command_name, False)
+                raise
 
-        return wrapper  # noqa
+        return wrapper
 
-    return decorator  # noqa
+    return decorator
 
 
 class TelegramCommandHandler:
@@ -89,40 +87,57 @@ class TelegramCommandHandler:
     def _log_request(self, username: str, command: str, success: bool) -> None:
         self.repo.log_request(username, command, success)
 
+    @staticmethod
+    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user = update.effective_user
+        text = (
+            f"👋 Hello, {user.first_name}! "
+            f"I am your smart recommendation assistant. \n"
+            f"Please select the function you want to use"
+        )
+
+        keyboard = [
+            ['/register', '/events'],
+            ['/add', '/help'],
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+        await update.message.reply_text(text, reply_markup=reply_markup)
+
     @before_request
     @after_request('help')
-    def help(self, update: Update, _: CallbackContext[Any, Any, Any]) -> None:
-        update.message.reply_text(
+    async def help(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+        await update.message.reply_text(
             'Commands: /help, /hello, /add, /register, /events, /more_events\n'
             "Example: /register gaming vr \"I enjoy fast-paced shooter games\""
         )
 
     @before_request
     @after_request('hello')
-    def hello(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def hello(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_message = ' '.join(context.args) if context.args else 'friend'
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f'Good day, {reply_message}!')
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Good day, {reply_message}!')
 
     @before_request
     @after_request('add')
-    def add(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def add(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             msg = context.args[0]
             self.logger.info(f'Incrementing count for: {msg}')
             count = self.repo.incr(msg)
-            update.message.reply_text(f'You have said {msg} for {count} times')
+            await update.message.reply_text(f'You have said {msg} for {count} times')
         except IndexError:
-            update.message.reply_text('Usage: /add <keyword>')
+            await update.message.reply_text('Usage: /add <keyword>')
         except Exception as e:
             self.logger.error(f'Error in add command: {e}')
-            update.message.reply_text('An error occurred.')
+            await update.message.reply_text('An error occurred.')
 
     @before_request
     @after_request('register')
-    def register(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def register(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         if not context.args:
-            update.message.reply_text(
+            await update.message.reply_text(
                 "Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")"
             )
             return
@@ -142,7 +157,7 @@ class TelegramCommandHandler:
             interests.append(arg)
 
         if not interests:
-            update.message.reply_text('Please provide at least one interest.')
+            await update.message.reply_text('Please provide at least one interest.')
             return
 
         self.user_service.register_user(username, interests, description)
@@ -156,51 +171,51 @@ class TelegramCommandHandler:
             response += f"Matched users: {', '.join(matches)}"
         else:
             response += 'No matches found yet. Invite friends to join!'
-        update.message.reply_text(response)
+        await update.message.reply_text(response)
 
     @before_request
     @after_request('events')
-    def events(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def events(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         user_profile = self.user_service.get_user(username)
 
         if not user_profile or not user_profile.interests:
-            update.message.reply_text('Please register your interests first with /register')
+            await update.message.reply_text('Please register your interests first with /register')
             return
 
         events = self.event_service.recommend_events(user_profile)
         if not events:
-            update.message.reply_text("Sorry, I couldn't generate event recommendations right now.")
+            await update.message.reply_text("Sorry, I couldn't generate event recommendations right now.")
             return
 
         response = ['Recommended Events:'] + [
             f"{i}. {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
-        update.message.reply_text('\n'.join(response))
+        await update.message.reply_text('\n'.join(response))
 
     @before_request
     @after_request('more_events')
-    def more_events(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def more_events(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         user_profile = self.user_service.get_user(username)
 
         if not user_profile or not user_profile.interests:
-            update.message.reply_text('Please register your interests first with /register')
+            await update.message.reply_text('Please register your interests first with /register')
             return
 
         events = self.event_service.recommend_more_events(user_profile)
         if not events:
-            update.message.reply_text("Sorry, I couldn't generate more event recommendations right now.")
+            await update.message.reply_text("Sorry, I couldn't generate more event recommendations right now.")
             return
 
         response = ['More Recommended Events:'] + [
             f"{i}. {event.name} on {event.date} ({event.link})" for i, event in enumerate(events, 1)
         ]
-        update.message.reply_text('\n'.join(response))
+        await update.message.reply_text('\n'.join(response))
 
     @before_request
     @after_request('message')
-    def handle_message(self, update: Update, context: CallbackContext[Any, Any, Any]) -> None:
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply = self.chatgpt_service.submit(update.message.text)
         self.logger.info(f'ChatGPT response: {reply}')
-        context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
