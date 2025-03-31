@@ -1,4 +1,3 @@
-import logging
 from typing import Self
 
 from handlers import TelegramCommandHandler
@@ -8,8 +7,6 @@ from service.event import EventService
 from service.user import UserService
 from setting import config
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 
 class TelegramBot:

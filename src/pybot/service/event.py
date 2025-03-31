@@ -19,7 +19,7 @@ class EventService:
             'You are an event planner. Generate a list of 3 fictional online events tailored to a user with the following profile:\n'
             f'Interests: {interests_str}\n'
             f"Description: {user_profile.description or 'No additional context provided.'}\n\n"
-            'For each event, include the event name, date (in 2025), and a fake URL. '
+            'For each event, include the event name, date (in 2025), and a URL. '
             "Ensure the events align with the user's specific preferences. "
             'Format your response as a numbered list like this:\n'
             '1. Event Name - Date - URL\n'
@@ -45,7 +45,8 @@ class EventService:
             'You are an event planner. Generate a list of 3 new fictional online events tailored to a user with the following profile:\n'
             f'Interests: {interests_str}\n'
             f"Description: {user_profile.description or 'No additional context provided.'}\n\n"
-            "For each event, include the event name, date (in 2025), and a fake URL. Ensure the events align with the user's specific preferences "
+            'For each event, include the event name, date (in 2025), and a URL.'
+            "Ensure the events align with the user's specific preferences "
             f'and are different from these previously suggested events: {past_events_str}. '
             'Format your response as a numbered list like this:\n'
             '1. Event Name - Date - URL\n'

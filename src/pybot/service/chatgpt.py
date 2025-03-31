@@ -12,7 +12,17 @@ class ChatGPTService:
     def submit(self, message: str) -> str:
         try:
             response = requests.post(
-                self.url, json={'messages': [{'role': 'user', 'content': message}]}, headers=self.headers, timeout=120
+                self.url,
+                json={
+                    'messages': [
+                        {
+                            'role': 'user',
+                            'content': message,
+                        }
+                    ]
+                },
+                headers=self.headers,
+                timeout=120,
             )
             response.raise_for_status()
             data = response.json()
