@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Any, Callable
 
 from service import ChatGPTService, EventService, UserService
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from pybot.repository import FirebaseRepository
@@ -97,10 +97,19 @@ class TelegramCommandHandler:
         )
 
         keyboard = [
-            ['/register', '/events'],
-            ['/add', '/help'],
+            [
+                InlineKeyboardButton('📝 Register', callback_data='cmd_register'),
+                InlineKeyboardButton('🎯 Events', callback_data='cmd_events'),
+            ],
+            [
+                InlineKeyboardButton('➕ Add', callback_data='cmd_add'),
+                InlineKeyboardButton('🤖 OpenAI', callback_data='cmd_openai'),
+            ],
+            [
+                InlineKeyboardButton('❓ Help', callback_data='cmd_help'),
+            ],
         ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text(text, reply_markup=reply_markup)
 
