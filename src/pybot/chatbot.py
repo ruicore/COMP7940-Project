@@ -6,7 +6,13 @@ from service.chatgpt import ChatGPTService
 from service.event import EventService
 from service.user import UserService
 from setting import config
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
+from telegram import BotCommand
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 
 
 class TelegramBot:
@@ -22,30 +28,35 @@ class TelegramBot:
             self.user_service,
             self.event_service,
         )
-        self.updater = Updater(token=config.telegram.access_token, use_context=True)
-        self.dispatcher = self.updater.dispatcher
+        self.app = ApplicationBuilder().token(config.telegram.access_token).build()
 
-    def setup_handlers(self) -> Self:
-        self.dispatcher.add_handler(CommandHandler('help', self.command_handler.help))
-        self.dispatcher.add_handler(CommandHandler('hello', self.command_handler.hello))
-        self.dispatcher.add_handler(CommandHandler('add', self.command_handler.add))
-        self.dispatcher.add_handler(CommandHandler('register', self.command_handler.register))
-        self.dispatcher.add_handler(CommandHandler('events', self.command_handler.events))
-        self.dispatcher.add_handler(CommandHandler('more_events', self.command_handler.more_events))
-        self.dispatcher.add_handler(
-            MessageHandler(Filters.text & (~Filters.command), self.command_handler.handle_message)
-        )
+    def setup_handlers(self):
+        self.app.add_handler(CommandHandler('start', self.command_handler.start))
+        self.app.add_handler(CommandHandler('help', self.command_handler.help))
+        self.app.add_handler(CommandHandler('hello', self.command_handler.hello))
+        self.app.add_handler(CommandHandler('add', self.command_handler.add))
+        self.app.add_handler(CommandHandler('register', self.command_handler.register))
+        self.app.add_handler(CommandHandler('events', self.command_handler.events))
+        self.app.add_handler(CommandHandler('more_events', self.command_handler.more_events))
+        self.app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.command_handler.handle_message))
+
+    async def set_bot_commands(self, app) -> Self:
+        commands = [
+            BotCommand('help', '查看帮助'),
+            BotCommand('hello', '向 Bot 打招呼'),
+            BotCommand('register', '注册你自己'),
+            BotCommand('add', '添加推荐内容'),
+            BotCommand('events', '查看推荐的事情'),
+            BotCommand('more_events', '查看更多推荐'),
+        ]
+        await app.bot.set_my_commands(commands)
         return self
 
-    def run(self) -> Self:
+    async def run(self):
         self.setup_handlers()
-
-        self.updater.start_webhook(
+        self.app.post_init = self.set_bot_commands
+        self.app.run_webhook(
             listen='0.0.0.0',
-            port=config.app_port,
-            url_path=config.telegram.access_token,
-            webhook_url=f"{config.app_url}/{config.telegram.access_token}",
+            port=self.config.app_port,
+            webhook_url=f"{self.config.app_url}/{self.config.telegram.access_token}",
         )
-        self.updater.idle()
-
-        return self
