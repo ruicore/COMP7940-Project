@@ -6,6 +6,7 @@ from service import ChatGPTService, EventService, UserService
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from pybot.model import Command
 from pybot.repository import FirebaseRepository
 
 
@@ -89,57 +90,58 @@ class TelegramCommandHandler:
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
-        data = query.data
+        type_ = query.data
+        chat_id = query.message.chat.id
         await query.answer()
 
-        if data == 'cmd_register':
-            await context.bot.send_message(
-                chat_id=query.message.chat.id,
-                text="Usage: /register <interests> [\"description\"] (e.g., /register gaming vr \"I enjoy FPS games\")",
-            )
-        elif data == 'cmd_events':
-            await self.events(update, context)
-        elif data == 'cmd_add':
-            await context.bot.send_message(chat_id=query.message.chat.id, text='Usage: /add <keyword>')
-        elif data == 'cmd_openai':
-            await context.bot.send_message(chat_id=query.message.chat.id, text='Usage: /openai <message>')
-        elif data == 'cmd_help':
-            await context.bot.send_message(
-                chat_id=query.message.chat.id,
-                text='Commands: /help, /hello, /add, /register, /events, /more_events\n'
-                'Example: /register gaming vr "I enjoy fast-paced shooter games"',
-            )
-        else:
-            await context.bot.send_message(chat_id=query.message.chat.id, text='⚠️ Unknown command. Please try again.')
+        match type_:
+            case Command.REGISTER:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="Usage: /register <interests> [\"description\"] (e.g., \n/register gaming vr \"I enjoy FPS games\")",
+                )
+            case Command.EVENTS:
+                await self.events(update, context)
+            case Command.STORE:
+                await context.bot.send_message(chat_id=chat_id, text='Usage: /add <keyword>')
+            case Command.OPENAI:
+                await context.bot.send_message(chat_id=chat_id, text='Usage: /openai <message>')
+            case Command.HELP:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text='Commands: /help, /add, /register, /events, /openai\n'
+                    'Example: /register gaming vr "I enjoy fast-paced shooter games"',
+                )
+            case _:
+                await context.bot.send_message(chat_id=chat_id, text='⚠️ Unknown command. Please try again.')
 
     @staticmethod
-    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user = update.effective_user
-        text = (
-            f"👋 Hello, {user.first_name}! "
-            f"I am your smart recommendation assistant. \n"
-            f"Please select the function you want to use"
+    async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(
+            (
+                f"👋 Hello, {update.effective_user.first_name}! \n"
+                f"I am your smart recommendation assistant. \n"
+                f"Please select the function you want to use"
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton('📝 Register', callback_data=Command.REGISTER),
+                        InlineKeyboardButton('🎯 Events', callback_data=Command.EVENTS),
+                    ],
+                    [
+                        InlineKeyboardButton('➕ Add', callback_data=Command.STORE),
+                        InlineKeyboardButton('🤖 OpenAI', callback_data=Command.OPENAI),
+                    ],
+                    [
+                        InlineKeyboardButton('❓ Help', callback_data=Command.HELP),
+                    ],
+                ]
+            ),
         )
 
-        keyboard = [
-            [
-                InlineKeyboardButton('📝 Register', callback_data='cmd_register'),
-                InlineKeyboardButton('🎯 Events', callback_data='cmd_events'),
-            ],
-            [
-                InlineKeyboardButton('➕ Add', callback_data='cmd_add'),
-                InlineKeyboardButton('🤖 OpenAI', callback_data='cmd_openai'),
-            ],
-            [
-                InlineKeyboardButton('❓ Help', callback_data='cmd_help'),
-            ],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(text, reply_markup=reply_markup)
-
     @before_request
-    @after_request('help')
+    @after_request(Command.HELP)
     async def help(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(
             'Commands: /help, /hello, /add, /register, /events, /more_events\n'
@@ -147,13 +149,13 @@ class TelegramCommandHandler:
         )
 
     @before_request
-    @after_request('hello')
+    @after_request(Command.HELLO)
     async def hello(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_message = ' '.join(context.args) if context.args else 'friend'
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Good day, {reply_message}!')
 
     @before_request
-    @after_request('openai')
+    @after_request(Command.OPENAI)
     async def openai(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not context.args:
             await update.message.reply_text('Usage: /openai <message>')
@@ -166,7 +168,7 @@ class TelegramCommandHandler:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
 
     @before_request
-    @after_request('add')
+    @after_request(Command.STORE)
     async def add(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             msg = context.args[0]
@@ -180,7 +182,7 @@ class TelegramCommandHandler:
             await update.message.reply_text('An error occurred.')
 
     @before_request
-    @after_request('register')
+    @after_request(Command.REGISTER)
     async def register(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         if not context.args:
@@ -221,7 +223,7 @@ class TelegramCommandHandler:
         await update.message.reply_text(response)
 
     @before_request
-    @after_request('events')
+    @after_request(Command.EVENTS)
     async def events(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = update.message.from_user.username or str(update.message.from_user.id)
         user_profile = self.user_service.get_user(username)
@@ -261,7 +263,7 @@ class TelegramCommandHandler:
         await update.message.reply_text('\n'.join(response))
 
     @before_request
-    @after_request('message')
+    @after_request(Command.MESSAGE)
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
         if message.chat.type in ['group', 'supergroup']:

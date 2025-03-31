@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from pybot.chatbot import TelegramBot
