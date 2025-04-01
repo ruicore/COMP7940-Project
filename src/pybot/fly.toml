@@ -8,7 +8,6 @@ app = 'pybot-misty-snow-5676'
 primary_region = 'hkg'
 
 [build]
-builder = 'paketobuildpacks/builder:base'
 
 [env]
 PORT = '8080'
