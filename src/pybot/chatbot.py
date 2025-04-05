@@ -36,7 +36,7 @@ class TelegramBot:
         self.app.add_handler(CallbackQueryHandler(self.command_handler.handle_callback))
         self.app.add_handler(CommandHandler(Command.HELP, self.command_handler.help))
         self.app.add_handler(CommandHandler(Command.HELLO, self.command_handler.hello))
-        self.app.add_handler(CommandHandler(Command.ADD_INTEREST, self.command_handler.add_interest))
+        self.app.add_handler(CommandHandler(Command.ADD_INTEREST, self.command_handler.add))
         self.app.add_handler(CommandHandler(Command.REGISTER, self.command_handler.register))
         self.app.add_handler(CommandHandler(Command.EVENTS, self.command_handler.events))
         self.app.add_handler(CommandHandler(Command.OPENAI, self.command_handler.openai))
