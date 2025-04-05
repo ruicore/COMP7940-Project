@@ -144,7 +144,7 @@ class TelegramCommandHandler:
                         InlineKeyboardButton('🎯 Events', callback_data=Command.EVENTS),
                     ],
                     [
-                        InlineKeyboardButton('➕ Add', callback_data=Command.STORE),
+                        InlineKeyboardButton('➕ Add', callback_data=Command.ADD_INTEREST),
                         InlineKeyboardButton('🤖 OpenAI', callback_data=Command.OPENAI),
                     ],
                     [
@@ -194,6 +194,20 @@ class TelegramCommandHandler:
         except Exception as e:
             self.logger.error(f'Error in add command: {e}')
             await update.message.reply_text('An error occurred.')
+
+    @before_request
+    @after_request(Command.ADD_INTEREST)
+    async def add_interest(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        username =user.username or str(user.id)
+        
+        if not context.args:
+            await update.message.reply_text('Usage: /add <interest>')
+            return
+        
+        interests = context.args
+        self.user_service.add_interest(username, interests)
+        await update.message.reply_text(f'Added interest: {",".join(interests)}')
 
     @before_request
     @after_request(Command.REGISTER)

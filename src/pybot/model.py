@@ -24,3 +24,4 @@ class Command(StrEnum):
     MESSAGE = 'message'
     STORE = 'store'
     HELLO = 'hello'
+    ADD_INTEREST = 'add'

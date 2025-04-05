@@ -71,3 +71,8 @@ class UserService:
             return []
 
         return matches
+    
+    def add_interest(self, username: str, interest: list[str])-> None:
+        user = self.get_user(username)
+        user.interests = user.interests.union(set(interest))
+        self.repo.save_user(user)
